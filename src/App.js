@@ -1,6 +1,6 @@
-
+import React from 'react';
 import { useState , useEffect } from 'react';
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import './App.css';
 import { GearFill } from 'react-bootstrap-icons';
 
@@ -8,10 +8,11 @@ import { GearFill } from 'react-bootstrap-icons';
 import PageButton from "./components/Pagebutton";
 import ConnectButton from './components/Connectbutton';
 import ConfigModal from './components/Configmodal';
+import CurrencyField from './components/Currencyfield';
 import { Currency } from '@uniswap/sdk';
 import { BeatLoader } from 'react-spinners';
 
-import { getWethContract, getUniContract } from "./ContractService";
+import { getWethContract, getUSDCContract, getPrice, runSwap } from "./ContractService";
 
 
 function App() {
@@ -29,9 +30,9 @@ function App() {
   const [loading, setLoading] = useState(undefined);
   const [ratio, setRatio] = useState(undefined);
   const [wethContract, setWethContract] = useState(undefined);
-  const [uniContract, setUniContract] = useState(undefined);
+  const [usdcContract, setUsdcContract] = useState(undefined);
   const [wethAmount, setWethAmount] = useState(undefined);
-  const [uniAmount, setUniAmount] = useState(undefined);
+  const [usdcAmount, setUsdcAmount] = useState(undefined);
 
 
   
@@ -43,8 +44,8 @@ function App() {
       const wethContract = getWethContract();
       setWethContract(wethContract);
 
-      const uniContract = getUniContract();
-      setUniContract(uniContract);
+      const usdcContract =  getUSDCContract();
+      setUsdcContract(usdcContract);
     }
     onLoad();
   }, [])
@@ -63,18 +64,37 @@ function App() {
 
           wethContract.balanceOf(address)
            .then(res => {
-             setWethAmount( Number(ethers.utils.formatEther(res)))
+             setWethAmount( Number(ethers.utils.formatUnits(res, 18)))
            })
 
-           uniContract.balanceOf(address)
+           usdcContract.balanceOf(address)
            .then(res => {
-             setUniAmount( Number(ethers.utils.formatEther(res)))
+            let a = Number(ethers.utils.formatUnits(res, 6));
+             setUsdcAmount( Number(ethers.utils.formatUnits(res, 6)))
            })
        })
   }
   
   if(signer != undefined) {
       getWalletAddress();
+  }
+
+  const getSwapPrice = (inputAmount) => {
+    setLoading(true);
+    console.log(inputAmount)
+    setInputAmount(inputAmount);
+   
+    const swap = getPrice(inputAmount, slippageAmount, Math.floor(Date.now()/1000 + (deadLineMinutes * 60)), signerAddress)
+                         .then( data => {
+                          console.log(data)
+                          setTransaction(data[0]);
+                          setOutputAmount(data[1]);
+                          setRatio(data[2]);
+                          setLoading(false);
+                         })
+                         .catch((error) => {
+                          console.log(error);
+                         })
   }
 
   return (
@@ -131,14 +151,38 @@ function App() {
                 />
                 <CurrencyField
                 field="output"
-                tokenName="UNI"
+                tokenName="USDC"
                 value={outputAmount}
                 signer={signer}
-                balance={uniAmount}
+                balance={usdcAmount}
                 spinner={BeatLoader}
                 loading={loading}
                 />
             </div>
+            <div className="ratioContainer">
+            {ratio && (
+              <>
+                {`1 USDC = ${ratio} WETH`}
+              </>
+            )}
+          </div>
+          <div className="swapButtonContainer">
+            {isConnected() ? (
+              <div
+                onClick={() => runSwap(transaction, signer)}
+                className="swapButton"
+              >
+                Swap
+              </div>
+            ) : (
+              <div
+                onClick={() => getSigner(provider)}
+                className="swapButton"
+              >
+                Connect Wallet
+              </div>
+            )}
+          </div>
           </div>
         </div>
      

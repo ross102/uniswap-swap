@@ -7,7 +7,7 @@ const Connectbutton = (props) => {
     const displayAddress = `${signerAddress?.substring(0, 10)}...`
     return (
         <>
-            {isConnected ? (
+            {isConnected() ? (
                 <div>
                     <Pagebutton name={displayAddress} />
                 </div>
